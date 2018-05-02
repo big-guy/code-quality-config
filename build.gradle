@@ -1,0 +1,57 @@
+apply plugin: 'java'
+apply plugin: 'checkstyle'
+
+repositories {
+    jcenter()
+    // TODO: This is unnecessary
+    mavenLocal()
+}
+
+// This would go into a proper plugin
+class Unpack extends DefaultTask {
+    @InputFiles
+    FileCollection configuration
+
+    @OutputDirectory
+    DirectoryProperty outputDirectory = newOutputDirectory()
+
+    Unpack() {
+        outputDirectory.set(project.layout.buildDirectory.dir("configs"))
+    }
+
+    @TaskAction
+    void extract() {
+        project.copy {
+            from(project.zipTree(configuration.singleFile))
+            into(outputDirectory)
+        }
+    }
+}
+
+configurations {
+    checkstyleConfig {
+        defaultDependencies { 
+            def version = project.checkstyle.configVersion
+            it.add(project.dependencies.create("org.gradle.samples.codequality:configs:${version}@zip"))
+        }
+    }
+}
+
+task unpack(type: Unpack) {
+    configuration = configurations.checkstyleConfig
+}
+
+checkstyle {
+    configDirectory = unpack.outputDirectory
+    ext.configVersion = "1.0"
+}
+
+tasks.withType(Checkstyle) {
+    dependsOn unpack
+}
+
+
+// User can change version of configuration if necessary:
+checkstyle {
+    // configVersion = "2.0"
+}
